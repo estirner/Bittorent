@@ -6,7 +6,7 @@ def decode_bencode(bencoded_value):
         first_colon_index = bencoded_value.find(b":")
         if first_colon_index == -1:
             raise ValueError("Invalid encoded value")
-        return bencoded_value[first_colon_index+1:]
+        return bencoded_value[first_colon_index+1:].decode()
     elif chr(bencoded_value[0]) == 'i':
         end_index = bencoded_value.find(b'e')
         if end_index == -1:
@@ -20,7 +20,7 @@ def decode_bencode(bencoded_value):
                 end_index = bencoded_value.find(b':', start_index)
                 length = int(bencoded_value[start_index:end_index])
                 start_index = end_index + 1 + length
-                list_items.append(bencoded_value[end_index+1:start_index])
+                list_items.append(bencoded_value[end_index+1:start_index].decode())
             elif chr(bencoded_value[start_index]) == 'i':
                 end_index = bencoded_value.find(b'e', start_index)
                 list_items.append(int(bencoded_value[start_index+1:end_index]))
