@@ -25,9 +25,12 @@ def decode_bencode(bencoded_value):
                 list_items.append(item)
                 start_index = end_index + 2
             else:
-                item, length = decode_bencode(bencoded_value[start_index:])
-                list_items.append(item)
-                start_index += length
+                if start_index < len(bencoded_value):
+                    item, length = decode_bencode(bencoded_value[start_index:])
+                    list_items.append(item)
+                    start_index += length
+                else:
+                    break
         return list_items, start_index + 1
     else:
         raise NotImplementedError("Only strings, integers and lists are supported at the moment")
