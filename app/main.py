@@ -6,7 +6,8 @@ def decode_bencode(bencoded_value):
         first_colon_index = bencoded_value.find(b":")
         if first_colon_index == -1:
             raise ValueError("Invalid encoded value")
-        return bencoded_value[first_colon_index+1:].decode()
+        length = int(bencoded_value[1:first_colon_index])
+        return bencoded_value[first_colon_index+1:first_colon_index+1+length].decode()
     elif chr(bencoded_value[0]) == 'i':
         end_index = bencoded_value.find(b'e')
         if end_index == -1:
@@ -15,20 +16,14 @@ def decode_bencode(bencoded_value):
     elif chr(bencoded_value[0]) == 'l':
         list_items = []
         start_index = 1
-        while start_index < len(bencoded_value) and bencoded_value[start_index] != ord('e'):
-            if chr(bencoded_value[start_index]).isdigit():
-                end_index = bencoded_value.find(b':', start_index)
-                length = int(bencoded_value[start_index:end_index])
-                start_index = end_index + 1
-                list_items.append(bencoded_value[end_index+1:start_index+length].decode())
-                start_index += length
-            elif chr(bencoded_value[start_index]) == 'i':
+        while bencoded_value[start_index] != ord('e'):
+            if chr(bencoded_value[start_index]).isdigit() or chr(bencoded_value[start_index]) == 'i':
                 end_index = bencoded_value.find(b'e', start_index)
-                list_items.append(int(bencoded_value[start_index+1:end_index]))
+                list_items.append(decode_bencode(bencoded_value[start_index:end_index+1]))
                 start_index = end_index + 1
             elif chr(bencoded_value[start_index]) == 'l':
                 end_index = start_index
-                while bencoded_value.count(b'l', start_index, end_index+2) > bencoded_value.count(b'e', start_index, end_index+2):
+                while bencoded_value.count(b'l', start_index, end_index+2) != bencoded_value.count(b'e', start_index, end_index+2):
                     end_index += 1
                 list_items.append(decode_bencode(bencoded_value[start_index:end_index+2]))
                 start_index = end_index + 2
