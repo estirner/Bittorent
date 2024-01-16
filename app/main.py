@@ -7,12 +7,12 @@ def decode_bencode(bencoded_value):
         if first_colon_index == -1:
             raise ValueError("Invalid encoded value")
         length = int(bencoded_value[1:first_colon_index])
-        return bencoded_value[first_colon_index+1:first_colon_index+1+length].decode(), first_colon_index+1+length
+        return bencoded_value[first_colon_index+1:first_colon_index+1+length].decode()
     elif chr(bencoded_value[0]) == 'i':
         end_index = bencoded_value.find(b'e')
         if end_index == -1:
             raise ValueError("Invalid encoded value")
-        return int(bencoded_value[1:end_index]), end_index+1
+        return int(bencoded_value[1:end_index])
     elif chr(bencoded_value[0]) == 'l':
         list_items = []
         start_index = 1
@@ -21,16 +21,12 @@ def decode_bencode(bencoded_value):
                 end_index = start_index
                 while bencoded_value.count(b'l', start_index, end_index+2) > bencoded_value.count(b'e', start_index, end_index+2):
                     end_index += 1
-                item, length = decode_bencode(bencoded_value[start_index:end_index+2])
-                list_items.append(item)
+                list_items.append(decode_bencode(bencoded_value[start_index:end_index+2]))
                 start_index = end_index + 2
             else:
-                if start_index < len(bencoded_value):
-                    item, length = decode_bencode(bencoded_value[start_index:])
-                    list_items.append(item)
-                    start_index += length
-                else:
-                    break
+                item, length = decode_bencode(bencoded_value[start_index:])
+                list_items.append(item)
+                start_index += length
         return list_items, start_index + 1
     else:
         raise NotImplementedError("Only strings, integers and lists are supported at the moment")
