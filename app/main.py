@@ -20,8 +20,16 @@ def decode_bencode(bencoded_value):
             decoded, remaining = decode_bencode(remaining)
             list_values.append(decoded)
         return list_values, remaining[1:]
+    elif chr(bencoded_value[0]) == 'd':
+        dict_values = {}
+        remaining = bencoded_value[1:]
+        while remaining[0] != ord('e'):
+            key, remaining = decode_bencode(remaining)
+            value, remaining = decode_bencode(remaining)
+            dict_values[key] = value
+        return dict_values, remaining[1:]
     else:
-        raise NotImplementedError("Only strings, integers, and lists are supported at the moment")
+        raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
 
 def main():
     command = sys.argv[1]
