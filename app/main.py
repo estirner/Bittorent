@@ -15,7 +15,7 @@ def decode_bencode(bencoded_value):
     elif chr(bencoded_value[0]) == 'l':
         list_items = []
         start_index = 1
-        while bencoded_value[start_index] != ord('e'):
+        while start_index < len(bencoded_value) and bencoded_value[start_index] != ord('e'):
             if chr(bencoded_value[start_index]).isdigit():
                 end_index = bencoded_value.find(b':', start_index)
                 length = int(bencoded_value[start_index:end_index])
