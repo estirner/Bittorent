@@ -1,8 +1,6 @@
 import json
 import sys
 
-from bencodepy import decode_from_bytes
-
 def decode_bencode(bencoded_value):
     if chr(bencoded_value[0]).isdigit():
         first_colon_index = bencoded_value.find(b":")
@@ -15,10 +13,13 @@ def decode_bencode(bencoded_value):
             raise ValueError("Invalid encoded value")
         return int(bencoded_value[1:end_index])
     elif chr(bencoded_value[0]) == 'l':
-        return decode_from_bytes(bencoded_value)
+        end_index = bencoded_value.find(b'e')
+        if end_index == -1:
+            raise ValueError("Invalid encoded value")
+        list_items = bencoded_value[1:end_index].split(b'e')
+        return [decode_bencode(item + b'e') for item in list_items]
     else:
         raise NotImplementedError("Only strings, integers and lists are supported at the moment")
-
 
 def main():
     command = sys.argv[1]
