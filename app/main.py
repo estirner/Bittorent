@@ -15,12 +15,13 @@ def decode_bencode(bencoded_value):
     elif chr(bencoded_value[0]) == 'l':
         list_items = []
         start_index = 1
-        while start_index < len(bencoded_value) - 1:
+        while start_index < len(bencoded_value) and bencoded_value[start_index] != ord('e'):
             if chr(bencoded_value[start_index]).isdigit():
                 end_index = bencoded_value.find(b':', start_index)
                 length = int(bencoded_value[start_index:end_index])
-                start_index = end_index + 1 + length
-                list_items.append(bencoded_value[end_index+1:start_index].decode())
+                start_index = end_index + 1
+                list_items.append(bencoded_value[end_index+1:start_index+length].decode())
+                start_index += length
             elif chr(bencoded_value[start_index]) == 'i':
                 end_index = bencoded_value.find(b'e', start_index)
                 list_items.append(int(bencoded_value[start_index+1:end_index]))
