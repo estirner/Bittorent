@@ -27,10 +27,10 @@ def decode_bencode(bencoded_value):
                 start_index = end_index + 1
             elif chr(bencoded_value[start_index]) == 'l':
                 end_index = start_index
-                while bencoded_value.count(b'e', start_index, end_index+1) != bencoded_value.count(b'l', start_index, end_index+1):
+                while bencoded_value.count(b'e', start_index, end_index+2) != bencoded_value.count(b'l', start_index, end_index+2):
                     end_index += 1
-                list_items.append(decode_bencode(bencoded_value[start_index:end_index+1]))
-                start_index = end_index + 1
+                list_items.append(decode_bencode(bencoded_value[start_index:end_index+2]))
+                start_index = end_index + 2
         return list_items
     else:
         raise NotImplementedError("Only strings, integers and lists are supported at the moment")
