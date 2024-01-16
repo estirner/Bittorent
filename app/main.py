@@ -25,6 +25,8 @@ def decode_bencode(bencoded_value):
         remaining = bencoded_value[1:]
         while remaining[0] != ord('e'):
             key, remaining = decode_bencode(remaining)
+            if isinstance(key, bytes):
+                key = key.decode()
             value, remaining = decode_bencode(remaining)
             dict_values[key] = value
         return dict_values, remaining[1:]
