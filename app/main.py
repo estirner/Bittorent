@@ -66,7 +66,6 @@ def main():
         file_length = torrent_info.get('info', {}).get('length', 0)
         print(f"Tracker URL: {tracker_url}")
         print(f"Length: {file_length}")
-    elif command == "info":
         info_dict = torrent_info.get('info', {})
         bencoded_info = bencode(info_dict)
         info_hash = hashlib.sha1(bencoded_info).hexdigest()
