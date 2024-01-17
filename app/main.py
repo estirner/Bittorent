@@ -35,14 +35,14 @@ def decode_bencode(bencoded_value):
         raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
 
 def bencode(data):
-    if isinstance(data, (bytes, bytearray)):
+    if isinstance(data, str):
         return f"{len(data)}:{data}".encode()
     elif isinstance(data, int):
         return f"i{data}e".encode()
     elif isinstance(data, list):
         return b"l" + b"".join(bencode(item) for item in data) + b"e"
     elif isinstance(data, dict):
-        encoded_dict = b"".join(bencode(key.encode('utf-8')) + bencode(value) for key, value in sorted(data.items()))
+        encoded_dict = b"".join(bencode(str(key)) + bencode(value) for key, value in sorted(data.items()))
         return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
