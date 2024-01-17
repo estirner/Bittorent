@@ -70,12 +70,12 @@ def main():
         piece_hashes = [pieces[i:i+20].hex() for i in range(0, len(pieces), 20)]
         print(f"Tracker URL: {tracker_url}")
         print(f"Length: {file_length}")
-        print(f"Piece Length: {piece_length}")
-        print(f"Piece Hashes: {piece_hashes}")
         info_dict = torrent_info.get('info', {})
         bencoded_info = bencode(info_dict)
         info_hash = hashlib.sha1(bencoded_info).hexdigest()
         print(f"Info Hash: {info_hash}")
+        print(f"Piece Length: {piece_length}")
+        print(f"Piece Hashes: {piece_hashes}")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
