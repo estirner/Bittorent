@@ -1,5 +1,6 @@
 import json
 import sys
+import hashlib
 
 def decode_bencode(bencoded_value):
     if chr(bencoded_value[0]).isdigit():
@@ -33,6 +34,18 @@ def decode_bencode(bencoded_value):
     else:
         raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
 
+def bencode(value):
+    if isinstance(value, int):
+        return f"i{value}e".encode()
+    elif isinstance(value, bytes):
+        return f"{len(value)}:{value}".encode()
+    elif isinstance(value, list):
+        return b"l" + b"".join(bencode(v) for v in value) + b"e"
+    elif isinstance(value, dict):
+        return b"d" + b"".join(bencode(k) + bencode(v) for k, v in sorted(value.items())) + b"e"
+    else:
+        raise TypeError(f"Type not serializable: {type(value)}")
+
 def main():
     command = sys.argv[1]
 
@@ -45,7 +58,7 @@ def main():
 
             raise TypeError(f"Type not serializable: {type(data)}")
 
-        decoded_value, _ = decode_bencode(bencoded_value)  # Ignore the remaining string
+        decoded_value, _ = decode_bencode(bencoded_value)
         print(json.dumps(decoded_value, default=bytes_to_str))
     elif command == "info":
         with open(sys.argv[2], 'rb') as f:
@@ -55,6 +68,8 @@ def main():
         file_length = torrent_info.get('info', {}).get('length', 0)
         print(f"Tracker URL: {tracker_url}")
         print(f"Length: {file_length}")
+        info_hash = hashlib.sha1(bencode(torrent_info['info'])).hexdigest()
+        print(f"Info hash: {info_hash}")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
