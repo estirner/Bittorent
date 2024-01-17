@@ -73,11 +73,15 @@ def main():
         print(f"Tracker URL: {tracker_url}")
         print(f"Length: {file_length}")
         if b'info' in torrent_info:
-            info_hash = hashlib.sha1(bencode(torrent_info[b'info'])).hexdigest()
-            print(f"Info hash: {info_hash}")
+            try:
+                info_bencoded = bencode(torrent_info[b'info'])
+                info_hash = hashlib.sha1(info_bencoded).hexdigest()
+                print(f"Info hash: {info_hash}")
+            except Exception as e:
+                print(f"Error when calculating info hash: {e}")
+                print(f"Info section: {torrent_info[b'info']}")
         else:
             print("The torrent file does not contain an 'info' section.")
-
 
 if __name__ == "__main__":
     main()
