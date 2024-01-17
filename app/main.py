@@ -42,8 +42,7 @@ def bencode(data):
     elif isinstance(data, list):
         return b"l" + b"".join(bencode(item) for item in data) + b"e"
     elif isinstance(data, dict):
-        sorted_dict = {k: data[k] for k in sorted(data)}
-        encoded_dict = b"".join(bencode(key.encode()) + bencode(value) for key, value in sorted_dict.items())
+        encoded_dict = b"".join(bencode(key.encode()) + bencode(value) for key, value in data.items())
         return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
