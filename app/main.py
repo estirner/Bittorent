@@ -12,20 +12,20 @@ def decode_bencode(bencoded_value):
     elif bencoded_value[0:1] == b'l':
         list_values = []
         remaining = bencoded_value[1:]
-        while remaining[0:1] != b'e':
+        while remaining and remaining[0:1] != b'e':
             decoded, remaining = decode_bencode(remaining)
             list_values.append(decoded)
-        return list_values, remaining[1:]
+        return list_values, remaining[1:] if remaining else remaining
     elif bencoded_value[0:1] == b'd':
         dict_values = {}
         remaining = bencoded_value[1:]
-        while remaining[0:1] != b'e':
+        while remaining and remaining[0:1] != b'e':
             key, remaining = decode_bencode(remaining)
             if isinstance(key, bytes):
                 key = key.decode()
             value, remaining = decode_bencode(remaining)
             dict_values[key] = value
-        return dict_values, remaining[1:]
+        return dict_values, remaining[1:] if remaining else remaining
     else:
         raise ValueError("Invalid bencoded value")
 
