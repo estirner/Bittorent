@@ -66,7 +66,7 @@ def main():
             raise TypeError(f"Type not serializable: {type(data)}")
 
         decoded_value, _ = decode_bencode(bencoded_value)
-        print(json.dumps(decoded_value, default=bytes_to_str, indent=4))
+        print(json.dumps(decoded_value, default=bytes_to_str))  # Removed indent argument
     elif command == "info":
         with open(sys.argv[2], 'rb') as f:
             bencoded_value = f.read()
