@@ -42,7 +42,7 @@ def bencode(data):
     elif isinstance(data, list):
         return b"l" + b"".join(bencode(item) for item in data) + b"e"
     elif isinstance(data, dict):
-        encoded_dict = b"".join(bencode(key.encode('utf-8')) + bencode(value) for key, value in data.items())
+        encoded_dict = b"".join(bencode(key.encode('utf-8')) + bencode(value) for key, value in sorted(data.items()))
         return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
