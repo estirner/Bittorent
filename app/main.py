@@ -77,10 +77,11 @@ def main():
         file_length = torrent_info.get(b'info', {}).get(b'length', 0)
         print(f"Tracker URL: {tracker_url}")
         print(f"Length: {file_length}")
-        info_hash = hashlib.sha1(bencode(torrent_info[b'info'])).hexdigest()
-        print(f"Info hash: {info_hash}")
-    else:
-        raise NotImplementedError(f"Unknown command {command}")
+        if b'info' in torrent_info:
+            info_hash = hashlib.sha1(bencode(torrent_info[b'info'])).hexdigest()
+            print(f"Info hash: {info_hash}")
+        else:
+            print("The torrent file does not contain an 'info' section.")
 
 
 if __name__ == "__main__":
