@@ -26,8 +26,6 @@ def decode_bencode(bencoded_value):
         remaining = bencoded_value[1:]
         while remaining[0] != ord('e'):
             key, remaining = decode_bencode(remaining)
-            if isinstance(key, bytes):
-                key = key.decode()
             value, remaining = decode_bencode(remaining)
             dict_values[key] = value
         return dict_values, remaining[1:]
@@ -68,16 +66,16 @@ def main():
             raise TypeError(f"Type not serializable: {type(data)}")
 
         decoded_value, _ = decode_bencode(bencoded_value)
-        print(json.dumps(decoded_value, default=bytes_to_str))
+        print(json.dumps(decoded_value, default=bytes_to_str, indent=4))
     elif command == "info":
         with open(sys.argv[2], 'rb') as f:
             bencoded_value = f.read()
         torrent_info, _ = decode_bencode(bencoded_value)
-        tracker_url = torrent_info.get('announce', '').decode()
-        file_length = torrent_info.get('info', {}).get('length', 0)
+        tracker_url = torrent_info.get(b'announce', b'').decode()
+        file_length = torrent_info.get(b'info', {}).get(b'length', 0)
         print(f"Tracker URL: {tracker_url}")
         print(f"Length: {file_length}")
-        info_hash = hashlib.sha1(bencode(torrent_info['info'])).hexdigest()
+        info_hash = hashlib.sha1(bencode(torrent_info[b'info'])).hexdigest()
         print(f"Info hash: {info_hash}")
     else:
         raise NotImplementedError(f"Unknown command {command}")
