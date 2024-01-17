@@ -42,8 +42,17 @@ def bencode(value):
     elif isinstance(value, list):
         return b"l" + b"".join(bencode(v) for v in value) + b"e"
     elif isinstance(value, dict):
-        return b"d" + b"".join(bencode(k) + bencode(v) for k, v in sorted(value.items())) + b"e"
+        if not all(isinstance(k, bytes) for k in value.keys()):
+            print(f"Dictionary keys are not bytes: {value}")
+        try:
+            return b"d" + b"".join(bencode(k) + bencode(v) for k, v in sorted(value.items())) + b"e"
+        except TypeError as e:
+            for k, v in value.items():
+                if not isinstance(v, (int, bytes, list, dict)):
+                    print(f"Unhandled type for key {k}: {type(v)}, value: {v}")
+            raise e
     else:
+        print(f"Unhandled type: {type(value)}, value: {value}")
         raise TypeError(f"Type not serializable: {type(value)}")
 
 def main():
