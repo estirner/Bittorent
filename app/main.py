@@ -65,14 +65,22 @@ def main():
         torrent_info, _ = decode_bencode(bencoded_value)
         tracker_url = torrent_info.get('announce', '').decode()
         file_length = torrent_info.get('info', {}).get('length', 0)
+        piece_length = torrent_info.get('info', {}).get('piece length', 0)
+        pieces = torrent_info.get('info', {}).get('pieces', b'')
+        piece_hashes = [pieces[i:i+20].hex() for i in range(0, len(pieces), 20)]
         print(f"Tracker URL: {tracker_url}")
         print(f"Length: {file_length}")
+        print(f"Piece Length: {piece_length}")
+        print(f"Piece Hashes: {piece_hashes}")
         info_dict = torrent_info.get('info', {})
         bencoded_info = bencode(info_dict)
         info_hash = hashlib.sha1(bencoded_info).hexdigest()
         print(f"Info Hash: {info_hash}")
     else:
         raise NotImplementedError(f"Unknown command {command}")
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
