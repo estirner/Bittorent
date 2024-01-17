@@ -3,36 +3,29 @@ import sys
 import hashlib
 
 def decode_bencode(bencoded_value):
-    if chr(bencoded_value[0]).isdigit():
-        first_colon_index = bencoded_value.find(b":")
-        if first_colon_index == -1:
-            raise ValueError("Invalid encoded value")
-        length = int(bencoded_value[:first_colon_index])
-        return bencoded_value[first_colon_index+1:first_colon_index+1+length], bencoded_value[first_colon_index+1+length:]
-    elif chr(bencoded_value[0]) == 'i':
-        end_index = bencoded_value.find(b'e')
-        if end_index == -1:
-            raise ValueError("Invalid encoded value")
-        return int(bencoded_value[1:end_index]), bencoded_value[end_index+1:]
-    elif chr(bencoded_value[0]) == 'l':
+    if bencoded_value[0:1].isdigit():
+        length, remaining = bencoded_value.split(b':', 1)
+        return remaining[:int(length)], remaining[int(length):]
+    elif bencoded_value[0:1] == b'i':
+        value, remaining = bencoded_value[1:].split(b'e', 1)
+        return int(value), remaining
+    elif bencoded_value[0:1] == b'l':
         list_values = []
         remaining = bencoded_value[1:]
-        while remaining[0] != ord('e'):
+        while remaining[0:1] != b'e':
             decoded, remaining = decode_bencode(remaining)
             list_values.append(decoded)
         return list_values, remaining[1:]
-    elif chr(bencoded_value[0]) == 'd':
+    elif bencoded_value[0:1] == b'd':
         dict_values = {}
         remaining = bencoded_value[1:]
-        while remaining[0] != ord('e'):
+        while remaining[0:1] != b'e':
             key, remaining = decode_bencode(remaining)
-            if isinstance(key, bytes):
-                key = key.decode()
             value, remaining = decode_bencode(remaining)
             dict_values[key] = value
         return dict_values, remaining[1:]
     else:
-        raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
+        raise ValueError("Invalid bencoded value")
 
 def bencode(value):
     if isinstance(value, int):
