@@ -100,7 +100,8 @@ def recv_piece(sock):
         index, begin, block = payload
         return index, begin, block
     else:
-        raise ValueError(f"Expected piece message, got message ID {message_id}")
+        print(f"Expected piece message, got message ID {message_id}")
+        return None, None, None
 
 def download_piece(torrent_info, piece_index, output_path):
     tracker_url = torrent_info.get('announce', '').decode()
@@ -134,7 +135,10 @@ def download_piece(torrent_info, piece_index, output_path):
         piece = b''
         for block_index in range(blocks_per_piece):
             send_request(sock, piece_index, block_index * (16 * 1024), 16 * 1024)
-            _, _, block = recv_piece(sock)
+            index, begin, block = recv_piece(sock)
+            if index is None:
+                print(f"Failed to download block {block_index} of piece {piece_index}")
+                return
             piece += block
         if last_block_length > 0:
             send_request(sock, piece_index, blocks_per_piece * (16 * 1024), last_block_length)
