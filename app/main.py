@@ -198,11 +198,11 @@ def main():
             peer_id_received = data[-20:]
             print(f"Peer ID: {peer_id_received.hex()}")
     elif command == "download_piece":
-        output_path = sys.argv[3]
-        with open(sys.argv[4], 'rb') as f:
+        with open(sys.argv[2], 'rb') as f:
             bencoded_value = f.read()
         torrent_info, _ = decode_bencode(bencoded_value)
         piece_index = int(sys.argv[4])
+        output_path = sys.argv[3]
         download_piece(torrent_info, piece_index, output_path)
     else:
         raise NotImplementedError(f"Unknown command {command}")
