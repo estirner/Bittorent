@@ -62,15 +62,24 @@ def handshake(peer_ip, peer_port, info_hash, peer_id):
     sock.send(payload)
     return sock
 
+def recv_all(sock, num_bytes):
+    data = b''
+    while len(data) < num_bytes:
+        packet = sock.recv(num_bytes - len(data))
+        if not packet:
+            return None
+        data += packet
+    return data
+
 def send_interested(sock):
     length = struct.pack('>I', 1)
     message_id = struct.pack('>B', 2)
     sock.send(length + message_id)
 
 def recv_message(sock):
-    length_prefix = struct.unpack('>I', sock.recv(4))[0]
-    message_id = struct.unpack('>B', sock.recv(1))[0]
-    payload = sock.recv(length_prefix - 1)
+    length_prefix = struct.unpack('>I', recv_all(sock, 4))[0]
+    message_id = struct.unpack('>B', recv_all(sock, 1))[0]
+    payload = recv_all(sock, length_prefix - 1)
     return message_id, payload
 
 def send_request(sock, index, begin, length):
