@@ -136,9 +136,24 @@ def main():
         with open(torrent_file, 'rb') as f:
             bencoded_value = f.read()
         torrent_info, _ = decode_bencode(bencoded_value)
+        tracker_url = torrent_info.get('announce', '').decode()
         info_dict = torrent_info.get('info', {})
         bencoded_info = bencode(info_dict)
         info_hash = hashlib.sha1(bencoded_info).digest()
+        params = {
+            'info_hash': info_hash,
+            'peer_id': '00112233445566778899',
+            'port': 6881,
+            'uploaded': 0,
+            'downloaded': 0,
+            'left': torrent_info.get('info', {}).get('length', 0),
+            'compact': 1
+        }
+        response = requests.get(tracker_url, params=params)
+        response_dict, _ = decode_bencode(response.content)
+        peers = response_dict.get('peers', b'')
+        ip = '.'.join(str(b) for b in peers[0:4])
+        port = struct.unpack('!H', peers[4:6])[0]
         piece_length = info_dict.get('piece length', 0)
         block_length = 2**14
         num_blocks = (piece_length + block_length - 1) // block_length
