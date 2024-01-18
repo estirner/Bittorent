@@ -158,21 +158,16 @@ def main():
             for i in range(num_blocks):
                 begin = i * block_length
                 length = block_length if i != num_blocks - 1 else last_block_length
-                # Send a request message
                 request_message = struct.pack('>IbIII', 13, 6, piece_index, begin, length)
                 s.sendall(request_message)
-                # Wait for a piece message
                 piece_message = s.recv(length + 9)
                 block = piece_message[9:]
                 piece_data += block
             piece_hash = hashlib.sha1(piece_data).digest()
             if piece_hash.hex() == torrent_info.get('info', {}).get('pieces', b'')[piece_index*20:(piece_index+1)*20].hex():
-                print(f"Piece {piece_index} downloaded successfully")
-                # Save the piece to disk
-                location = f'piece_{piece_index}'
-                with open(location, 'wb') as f:
+                print('Piece downloaded successfully')
+                with open(f'piece_{piece_index}', 'wb') as f:
                     f.write(piece_data)
-                print(f"Piece {piece_index} downloaded to {location}")
             else:
                 print('Piece integrity check failed')
     else:
