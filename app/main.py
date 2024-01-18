@@ -109,7 +109,7 @@ def download_piece(torrent_info, piece_index, output_path):
         send_interested(sock)
         while True:
             message_id, _ = recv_message(sock)
-            if message_id == 1:  # unchoke
+            if message_id == 1:
                 break
         piece_length = torrent_info.get('info', {}).get('piece length', 0)
         blocks_per_piece = piece_length // (16 * 1024)
