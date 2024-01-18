@@ -134,7 +134,7 @@ def main():
                 raise ValueError("Output file not specified")
             torrent_file = args[0]
             piece_index = int(args[1])
-            with open(sys.argv[2], 'rb') as f:
+            with open(torrent_file, 'rb') as f:
                 bencoded_value = f.read()
             torrent_info, _ = decode_bencode(bencoded_value)
             info_dict = torrent_info.get('info', {})
