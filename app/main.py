@@ -122,6 +122,59 @@ def main():
             data = s.recv(68)
             peer_id_received = data[-20:]
             print(f"Peer ID: {peer_id_received.hex()}")
+    elif command == "download_piece":
+        with open(sys.argv[2], 'rb') as f:
+            bencoded_value = f.read()
+        torrent_info, _ = decode_bencode(bencoded_value)
+        info_dict = torrent_info.get('info', {})
+        bencoded_info = bencode(info_dict)
+        info_hash = hashlib.sha1(bencoded_info).digest()
+        peer_id = '00112233445566778899'
+        ip_port = sys.argv[3].split(':')
+        ip = ip_port[0]
+        port = int(ip_port[1])
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((ip, port))
+            protocol_name = 'BitTorrent protocol'
+            handshake = struct.pack(f'>B{len(protocol_name)}s8x20s20s', len(protocol_name), protocol_name.encode(), info_hash, peer_id.encode())
+            s.sendall(handshake)
+            data = s.recv(68)
+            peer_id_received = data[-20:]
+            print(f"Peer ID: {peer_id_received.hex()}")
+            bitfield_message = s.recv(1024)
+            interested_message = struct.pack('>Ib', 1, 2)
+            s.sendall(interested_message)
+            unchoke_message = s.recv(1024)
+            piece_index = 0
+            block_length = 16 * 1024
+            piece_length = torrent_info.get('info', {}).get('piece length', 0)
+            num_blocks = piece_length // block_length
+            last_block_length = piece_length % block_length
+            if last_block_length != 0:
+                num_blocks += 1
+            else:
+                last_block_length = block_length
+            piece_data = b''
+            for i in range(num_blocks):
+                begin = i * block_length
+                length = block_length if i != num_blocks - 1 else last_block_length
+                # Send a request message
+                request_message = struct.pack('>IbIII', 13, 6, piece_index, begin, length)
+                s.sendall(request_message)
+                # Wait for a piece message
+                piece_message = s.recv(length + 9)
+                block = piece_message[9:]
+                piece_data += block
+            piece_hash = hashlib.sha1(piece_data).digest()
+            if piece_hash.hex() == torrent_info.get('info', {}).get('pieces', b'')[piece_index*20:(piece_index+1)*20].hex():
+                print(f"Piece {piece_index} downloaded successfully")
+                # Save the piece to disk
+                location = f'piece_{piece_index}'
+                with open(location, 'wb') as f:
+                    f.write(piece_data)
+                print(f"Piece {piece_index} downloaded to {location}")
+            else:
+                print('Piece integrity check failed')
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
