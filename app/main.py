@@ -85,13 +85,6 @@ def recv_piece(sock):
     block = payload[8:]
     return index, begin, block
 
-def check_piece_hash(piece, expected_hash):
-    actual_hash = hashlib.sha1(piece).hexdigest()
-    if actual_hash != expected_hash:
-        print(f"Piece hash does not match expected hash. Expected: {expected_hash} Actual: {actual_hash}")
-        return False
-    return True
-
 def download_piece(torrent_info, piece_index, output_path):
     tracker_url = torrent_info.get('announce', '').decode()
     info_dict = torrent_info.get('info', {})
@@ -109,11 +102,6 @@ def download_piece(torrent_info, piece_index, output_path):
     response = requests.get(tracker_url, params=params)
     response_dict, _ = decode_bencode(response.content)
     peers = response_dict.get('peers', b'')
-    piece_hashes = [torrent_info.get('info', {}).get('pieces', b'')[i:i+20].hex() for i in range(0, len(peers), 20)]
-    expected_hash = piece_hashes[piece_index]
-    if not check_piece_hash(piece, expected_hash):
-        print(f"Error downloading piece {piece_index}.")
-        return
     for i in range(0, len(peers), 6):
         ip = '.'.join(str(b) for b in peers[i:i+4])
         port = struct.unpack('!H', peers[i+4:i+6])[0]
