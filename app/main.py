@@ -115,7 +115,8 @@ def main():
         port = int(sys.argv[4])
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((ip, port))
-            handshake = b'\x13BitTorrent protocol' + b'\x00'*8 + info_hash + peer_id.encode()
+            protocol_name = 'BitTorrent protocol'
+            handshake = struct.pack(f'>B{len(protocol_name)}s8x20s20s', len(protocol_name), protocol_name.encode(), info_hash, peer_id.encode())
             s.sendall(handshake)
             data = s.recv(68)
             peer_id_received = data[-20:]
