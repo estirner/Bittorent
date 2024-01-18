@@ -123,57 +123,40 @@ def main():
             peer_id_received = data[-20:]
             print(f"Peer ID: {peer_id_received.hex()}")
     elif command == "download_piece":
-        try:
-            with open(sys.argv[2], 'rb') as f:
-                bencoded_value = f.read()
-            torrent_info, _ = decode_bencode(bencoded_value)
-            info_dict = torrent_info.get('info', {})
-            bencoded_info = bencode(info_dict)
-            info_hash = hashlib.sha1(bencoded_info).digest()
-            peer_id = '00112233445566778899'
-            ip_port = sys.argv[3].split(':')
-            ip = ip_port[0]
-            port = int(ip_port[1])
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((ip, port))
-                protocol_name = 'BitTorrent protocol'
-                handshake = struct.pack(f'>B{len(protocol_name)}s8x20s20s', len(protocol_name), protocol_name.encode(), info_hash, peer_id.encode())
-                s.sendall(handshake)
-                data = s.recv(68)
-                peer_id_received = data[-20:]
-                print(f"Peer ID: {peer_id_received.hex()}")
-                bitfield_message = s.recv(1024)
-                interested_message = struct.pack('>Ib', 1, 2)
-                s.sendall(interested_message)
-                unchoke_message = s.recv(1024)
-                piece_index = 0
-                block_length = 16 * 1024
-                piece_length = torrent_info.get('info', {}).get('piece length', 0)
-                num_blocks = piece_length // block_length
-                last_block_length = piece_length % block_length
-                if last_block_length != 0:
-                    num_blocks += 1
-                else:
-                    last_block_length = block_length
-                piece_data = b''
-                for i in range(num_blocks):
-                    begin = i * block_length
-                    length = block_length if i != num_blocks - 1 else last_block_length
-                    request_message = struct.pack('>IbIII', 13, 6, piece_index, begin, length)
-                    s.sendall(request_message)
-                    piece_message = s.recv(length + 9)
-                    block = piece_message[9:]
-                    piece_data += block
-                piece_hash = hashlib.sha1(piece_data).digest()
-                if piece_hash.hex() == torrent_info.get('info', {}).get('pieces', b'')[piece_index*20:(piece_index+1)*20].hex():
-                    print('Piece downloaded successfully')
-                    with open(f'piece_{piece_index}', 'wb') as f:
-                        f.write(piece_data)
-                else:
-                    print('Piece integrity check failed')
-        except FileNotFoundError:
-            print(f"File {sys.argv[2]} not found. Please provide a valid file path.")
-            return
+        with open(sys.argv[3], 'rb') as f:
+            bencoded_value = f.read()
+        torrent_info, _ = decode_bencode(bencoded_value)
+        info_dict = torrent_info.get('info', {})
+        bencoded_info = bencode(info_dict)
+        info_hash = hashlib.sha1(bencoded_info).digest()
+        piece_index = int(sys.argv[4])
+        piece_length = info_dict.get('piece length', 0)
+        block_length = 2**14
+        num_blocks = (piece_length + block_length - 1) // block_length
+        piece = b''
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((ip, port))
+            data = s.recv(5)
+            if data[4] != 5:
+                raise ValueError("Expected bitfield message")
+            s.sendall(struct.pack('>IB', 1, 2))
+            data = s.recv(5)
+            if data[4] != 1:
+                raise ValueError("Expected unchoke message")
+            for i in range(num_blocks):
+                begin = i * block_length
+                length = min(block_length, piece_length - begin)
+                s.sendall(struct.pack('>IBIII', 13, 6, piece_index, begin, length))
+                data = s.recv(9 + length)
+                if data[4] != 7:
+                    raise ValueError("Expected piece message")
+                piece += data[13:]
+        piece_hash = hashlib.sha1(piece).digest()
+        if piece_hash != info_dict.get('pieces', b'')[piece_index*20:(piece_index+1)*20]:
+            raise ValueError("Piece integrity check failed")
+        with open(sys.argv[2], 'wb') as f:
+            f.write(piece)
+        print(f"Piece {piece_index} downloaded to {sys.argv[2]}.")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
