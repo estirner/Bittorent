@@ -1,7 +1,6 @@
 import json
 import sys
 import hashlib
-from numpy import piecewise
 import requests
 import struct
 import socket
@@ -110,7 +109,7 @@ def download_piece(torrent_info, piece_index, output_path):
     response = requests.get(tracker_url, params=params)
     response_dict, _ = decode_bencode(response.content)
     peers = response_dict.get('peers', b'')
-    piece_hashes = [torrent_info.get('info', {}).get('pieces', b'')[i:i+20].hex() for i in range(0, len(piecewise), 20)]
+    piece_hashes = [torrent_info.get('info', {}).get('pieces', b'')[i:i+20].hex() for i in range(0, len(peers), 20)]
     expected_hash = piece_hashes[piece_index]
     if not check_piece_hash(piece, expected_hash):
         print(f"Error downloading piece {piece_index}.")
