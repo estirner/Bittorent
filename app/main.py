@@ -56,7 +56,7 @@ def handshake(peer_ip, peer_port, info_hash, peer_id):
     pstrlen = b'\x13'
     pstr = b'BitTorrent protocol'
     reserved = b'\x00' * 8
-    payload = pstrlen + pstr + reserved + info_hash + peer_id
+    payload = pstrlen + pstr + reserved + info_hash + peer_id.encode()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((peer_ip, peer_port))
     sock.send(payload)
