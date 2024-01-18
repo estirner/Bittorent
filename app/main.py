@@ -56,20 +56,11 @@ def handshake(peer_ip, peer_port, info_hash, peer_id):
     pstrlen = b'\x13'
     pstr = b'BitTorrent protocol'
     reserved = b'\x00' * 8
-    payload = pstrlen + pstr + reserved + info_hash + peer_id.encode()
+    payload = pstrlen + pstr + reserved + info_hash + peer_id
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((peer_ip, peer_port))
     sock.send(payload)
     return sock
-
-def recv_all(sock, num_bytes):
-    data = b''
-    while len(data) < num_bytes:
-        packet = sock.recv(num_bytes - len(data))
-        if not packet:
-            return None
-        data += packet
-    return data
 
 def send_interested(sock):
     length = struct.pack('>I', 1)
@@ -77,16 +68,10 @@ def send_interested(sock):
     sock.send(length + message_id)
 
 def recv_message(sock):
-    length_prefix = struct.unpack('>I', recv_all(sock, 4))[0]
-    message_id = struct.unpack('>B', recv_all(sock, 1))[0]
-    if message_id == 7:
-        index = struct.unpack('>I', recv_all(sock, 4))[0]
-        begin = struct.unpack('>I', recv_all(sock, 4))[0]
-        block = recv_all(sock, length_prefix - 9)
-        return message_id, (index, begin, block)
-    else:
-        payload = recv_all(sock, length_prefix - 1)
-        return message_id, payload
+    length_prefix = struct.unpack('>I', sock.recv(4))[0]
+    message_id = struct.unpack('>B', sock.recv(1))[0]
+    payload = sock.recv(length_prefix - 1)
+    return message_id, payload
 
 def send_request(sock, index, begin, length):
     length_prefix = struct.pack('>I', 13)
@@ -95,13 +80,10 @@ def send_request(sock, index, begin, length):
     sock.send(length_prefix + message_id + payload)
 
 def recv_piece(sock):
-    message_id, payload = recv_message(sock)
-    if message_id == 7:
-        index, begin, block = payload
-        return index, begin, block
-    else:
-        print(f"Expected piece message, got message ID {message_id}")
-        return None, None, None
+    _, payload = recv_message(sock)
+    index, begin = struct.unpack('>II', payload[:8])
+    block = payload[8:]
+    return index, begin, block
 
 def download_piece(torrent_info, piece_index, output_path):
     tracker_url = torrent_info.get('announce', '').decode()
@@ -135,10 +117,7 @@ def download_piece(torrent_info, piece_index, output_path):
         piece = b''
         for block_index in range(blocks_per_piece):
             send_request(sock, piece_index, block_index * (16 * 1024), 16 * 1024)
-            index, begin, block = recv_piece(sock)
-            if index is None:
-                print(f"Failed to download block {block_index} of piece {piece_index}")
-                return
+            _, _, block = recv_piece(sock)
             piece += block
         if last_block_length > 0:
             send_request(sock, piece_index, blocks_per_piece * (16 * 1024), last_block_length)
