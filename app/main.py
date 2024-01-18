@@ -111,8 +111,9 @@ def main():
         bencoded_info = bencode(info_dict)
         info_hash = hashlib.sha1(bencoded_info).digest()
         peer_id = '00112233445566778899'
-        ip = sys.argv[3]
-        port = int(sys.argv[4])
+        ip_port = sys.argv[3].split(':')
+        ip = ip_port[0]
+        port = int(ip_port[1])
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((ip, port))
             protocol_name = 'BitTorrent protocol'
