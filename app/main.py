@@ -198,8 +198,8 @@ def main():
             peer_id_received = data[-20:]
             print(f"Peer ID: {peer_id_received.hex()}")
     elif command == "download_piece":
-        output_path = sys.argv[2]
-        with open(sys.argv[3], 'rb') as f:
+        output_path = sys.argv[3]
+        with open(sys.argv[4], 'rb') as f:
             bencoded_value = f.read()
         torrent_info, _ = decode_bencode(bencoded_value)
         piece_index = int(sys.argv[4])
