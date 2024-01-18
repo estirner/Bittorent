@@ -1,3 +1,4 @@
+import getopt
 import json
 import sys
 import hashlib
@@ -123,7 +124,16 @@ def main():
             peer_id_received = data[-20:]
             print(f"Peer ID: {peer_id_received.hex()}")
     elif command == "download_piece":
-        with open(sys.argv[3], 'rb') as f:
+        opts, args = getopt.getopt(sys.argv[2:], 'o:')
+        output_file = None
+        for opt, arg in opts:
+            if opt == '-o':
+                output_file = arg
+        if output_file is None:
+            raise ValueError("Output file not specified")
+        torrent_file = args[0]
+        piece_index = int(args[1])
+        with open(torrent_file, 'rb') as f:
             bencoded_value = f.read()
         torrent_info, _ = decode_bencode(bencoded_value)
         info_dict = torrent_info.get('info', {})
@@ -154,9 +164,9 @@ def main():
         piece_hash = hashlib.sha1(piece).digest()
         if piece_hash != info_dict.get('pieces', b'')[piece_index*20:(piece_index+1)*20]:
             raise ValueError("Piece integrity check failed")
-        with open(sys.argv[2], 'wb') as f:
+        with open(output_file, 'wb') as f:
             f.write(piece)
-        print(f"Piece {piece_index} downloaded to {sys.argv[2]}.")
+        print(f"Piece {piece_index} downloaded to {output_file}.")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
