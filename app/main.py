@@ -121,7 +121,7 @@ def main():
             s.sendall(handshake)
             data = s.recv(68)
             peer_id_received = data[-20:]
-            print(f"Peer id: {peer_id_received.hex()}")
+            print(f"Peer ID: {peer_id_received.hex()}")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
