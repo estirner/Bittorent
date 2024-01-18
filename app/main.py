@@ -205,7 +205,7 @@ def main():
         output_path = sys.argv[3]
         download_piece(torrent_info, piece_index, output_path)
     else:
-        raise NotImplementedError(f"Unknown command {command}")
+        raise NotImplementedError(f"Unknown command: {command}")
 
 if __name__ == "__main__":
     main()
