@@ -139,7 +139,6 @@ def main():
         info_dict = torrent_info.get('info', {})
         bencoded_info = bencode(info_dict)
         info_hash = hashlib.sha1(bencoded_info).digest()
-        piece_index = int(sys.argv[4])
         piece_length = info_dict.get('piece length', 0)
         block_length = 2**14
         num_blocks = (piece_length + block_length - 1) // block_length
