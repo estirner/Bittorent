@@ -3,6 +3,7 @@ import sys
 import hashlib
 import requests
 import struct
+import socket
 
 def decode_bencode(bencoded_value):
     if chr(bencoded_value[0]).isdigit():
@@ -102,6 +103,23 @@ def main():
             ip = '.'.join(str(b) for b in peers[i:i+4])
             port = struct.unpack('!H', peers[i+4:i+6])[0]
             print(f"Peer: {ip}:{port}")
+    elif command == "handshake":
+        with open(sys.argv[2], 'rb') as f:
+            bencoded_value = f.read()
+        torrent_info, _ = decode_bencode(bencoded_value)
+        info_dict = torrent_info.get('info', {})
+        bencoded_info = bencode(info_dict)
+        info_hash = hashlib.sha1(bencoded_info).digest()
+        peer_id = '00112233445566778899'
+        ip = sys.argv[3]
+        port = int(sys.argv[4])
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((ip, port))
+            handshake = b'\x13BitTorrent protocol' + b'\x00'*8 + info_hash + peer_id.encode()
+            s.sendall(handshake)
+            data = s.recv(68)
+            peer_id_received = data[-20:]
+            print(f"Peer id: {peer_id_received.hex()}")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
