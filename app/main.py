@@ -68,18 +68,27 @@ def send_interested(sock):
     sock.send(length + message_id)
 
 def recv_message(sock):
-    length_prefix = sock.recv(4)
+    length_prefix = recv_all(sock, 4)
     if len(length_prefix) < 4:
         raise ConnectionError("Connection closed before all data was received")
     length_prefix = struct.unpack('>I', length_prefix)[0]
 
-    message_id = sock.recv(1)
+    message_id = recv_all(sock, 1)
     if len(message_id) < 1:
         raise ConnectionError("Connection closed before all data was received")
     message_id = struct.unpack('>B', message_id)[0]
 
-    payload = sock.recv(length_prefix - 1)
+    payload = recv_all(sock, length_prefix - 1)
     return message_id, payload
+
+def recv_all(sock, n):
+    data = bytearray()
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            return None
+        data.extend(packet)
+    return data
 
 def send_request(sock, index, begin, length):
     length_prefix = struct.pack('>I', 13)
