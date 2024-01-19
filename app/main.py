@@ -67,19 +67,10 @@ def send_interested(sock):
     message_id = struct.pack('>B', 2)
     sock.send(length + message_id)
 
-def recv_exact(sock, num_bytes):
-    data = b''
-    while len(data) < num_bytes:
-        chunk = sock.recv(num_bytes - len(data))
-        if not chunk:
-            raise IOError("Socket connection broken")
-        data += chunk
-    return data
-
 def recv_message(sock):
-    length_prefix = struct.unpack('>I', recv_exact(sock, 4))[0]
-    message_id = struct.unpack('>B', recv_exact(sock, 1))[0]
-    payload = recv_exact(sock, length_prefix - 1)
+    length_prefix = struct.unpack('>I', sock.recv(4))[0]
+    message_id = struct.unpack('>B', sock.recv(1))[0]
+    payload = sock.recv(length_prefix - 1)
     return message_id, payload
 
 def send_request(sock, index, begin, length):
