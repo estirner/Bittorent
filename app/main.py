@@ -79,13 +79,10 @@ def send_request(sock, index, begin, length):
     payload = struct.pack('>III', index, begin, length)
     sock.send(length_prefix + message_id + payload)
 
-def recv_piece(sock, block_length):
+def recv_piece(sock):
     _, payload = recv_message(sock)
     index, begin = struct.unpack('>II', payload[:8])
     block = payload[8:]
-    while len(block) < block_length:
-        _, payload = recv_message(sock)
-        block += payload
     return index, begin, block
 
 def download_piece(torrent_info, piece_index, output_path):
@@ -112,19 +109,23 @@ def download_piece(torrent_info, piece_index, output_path):
         send_interested(sock)
         while True:
             message_id, _ = recv_message(sock)
-            if message_id == 1:  # unchoke
+            if message_id == 1:
                 break
+        file_length = torrent_info.get('info', {}).get('length', 0)
         piece_length = torrent_info.get('info', {}).get('piece length', 0)
+        num_pieces = file_length
+        if piece_index == num_pieces - 1:
+            piece_length = file_length % piece_length
         blocks_per_piece = piece_length // (16 * 1024)
         last_block_length = piece_length % (16 * 1024)
         piece = b''
         for block_index in range(blocks_per_piece):
             send_request(sock, piece_index, block_index * (16 * 1024), 16 * 1024)
-            _, _, block = recv_piece(sock, 16 * 1024)
+            _, _, block = recv_piece(sock)
             piece += block
         if last_block_length > 0:
             send_request(sock, piece_index, blocks_per_piece * (16 * 1024), last_block_length)
-            _, _, block = recv_piece(sock, last_block_length)
+            _, _, block = recv_piece(sock)
             piece += block
         with open(output_path, 'wb') as f:
             f.write(piece)
