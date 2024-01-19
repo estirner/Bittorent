@@ -68,27 +68,10 @@ def send_interested(sock):
     sock.send(length + message_id)
 
 def recv_message(sock):
-    length_prefix = recv_all(sock, 4)
-    if len(length_prefix) < 4:
-        raise ConnectionError("Connection closed before all data was received")
-    length_prefix = struct.unpack('>I', length_prefix)[0]
-
-    message_id = recv_all(sock, 1)
-    if len(message_id) < 1:
-        raise ConnectionError("Connection closed before all data was received")
-    message_id = struct.unpack('>B', message_id)[0]
-
-    payload = recv_all(sock, length_prefix - 1)
+    length_prefix = struct.unpack('>I', sock.recv(4))[0]
+    message_id = struct.unpack('>B', sock.recv(1))[0]
+    payload = sock.recv(length_prefix - 1)
     return message_id, payload
-
-def recv_all(sock, n):
-    data = bytearray()
-    while len(data) < n:
-        packet = sock.recv(n - len(data))
-        if not packet:
-            return None
-        data.extend(packet)
-    return data
 
 def send_request(sock, index, begin, length):
     length_prefix = struct.pack('>I', 13)
@@ -132,7 +115,7 @@ def download_piece(torrent_info, piece_index, output_path):
         piece_length = torrent_info.get('info', {}).get('piece length', 0)
         num_pieces = file_length // piece_length
         if piece_index == num_pieces - 1:
-            piece_length = file_length - (piece_length * (num_pieces - 1))
+            piece_length = file_length % piece_length
         blocks_per_piece = piece_length // (16 * 1024)
         last_block_length = piece_length % (16 * 1024)
         piece = b''
