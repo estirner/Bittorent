@@ -119,17 +119,27 @@ def download_piece(torrent_info, piece_index, output_path):
         blocks_per_piece = piece_length // (16 * 1024)
         last_block_length = piece_length % (16 * 1024)
         piece = b''
+        data = bytearray()
         for block_index in range(blocks_per_piece):
             send_request(sock, piece_index, block_index * (16 * 1024), 16 * 1024)
             _, _, block = recv_piece(sock)
-            piece += block
+            data.extend(block)
+
         if last_block_length > 0:
             send_request(sock, piece_index, blocks_per_piece * (16 * 1024), last_block_length)
             _, _, block = recv_piece(sock)
-            piece += block
+            data.extend(block)
+            
+        sha1 = hashlib.sha1(data).hexdigest()
+        pieces = torrent_info.get('info', {}).get('pieces', b'')
+        expected_hash = pieces[piece_index*20:piece_index*20+20].hex()
+        if sha1 != expected_hash:
+            raise ValueError("SHA1 hash of the downloaded piece does not match the expected hash")
         with open(output_path, 'wb') as f:
-            f.write(piece)
+            f.write(data)
+
         print(f"Piece {piece_index} downloaded to {output_path}.")
+        return True
 
 def main():
     command = sys.argv[1]
