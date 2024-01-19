@@ -113,7 +113,7 @@ def download_piece(torrent_info, piece_index, output_path):
                 break
         file_length = torrent_info.get('info', {}).get('length', 0)
         piece_length = torrent_info.get('info', {}).get('piece length', 0)
-        num_pieces = file_length
+        num_pieces = file_length // piece_length
         if piece_index == num_pieces - 1:
             piece_length = file_length % piece_length
         blocks_per_piece = piece_length // (16 * 1024)
