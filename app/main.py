@@ -90,8 +90,6 @@ def download_piece(torrent_info, piece_index, output_path):
     info_dict = torrent_info.get('info', {})
     bencoded_info = bencode(info_dict)
     info_hash = hashlib.sha1(bencoded_info).digest()
-    pieces = torrent_info.get('info', {}).get('pieces', b'')
-    piece_hashes = [pieces[i:i+20] for i in range(0, len(pieces), 20)]
     params = {
         'info_hash': info_hash,
         'peer_id': '00112233445566778899',
@@ -129,10 +127,6 @@ def download_piece(torrent_info, piece_index, output_path):
             send_request(sock, piece_index, blocks_per_piece * (16 * 1024), last_block_length)
             _, _, block = recv_piece(sock)
             piece += block
-        piece_hash = hashlib.sha1(piece).digest()
-        if piece_hash != piece_hashes[piece_index]:
-            print(f"Hash mismatch for piece {piece_index}. Re-downloading...")
-            return download_piece(torrent_info, piece_index, output_path)
         with open(output_path, 'wb') as f:
             f.write(piece)
         print(f"Piece {piece_index} downloaded to {output_path}.")
