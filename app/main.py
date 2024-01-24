@@ -1,9 +1,16 @@
 import json
 import sys
 import hashlib
+from urllib.parse import urlencode
 import requests
 import struct
 import socket
+import math
+import binascii
+
+PEER_ID = b"00112233445566778899"
+LEN_OF_PIECE_HASH = 20
+BLOCK_SIZE_IN_BYTES = 1 << 14
 
 def decode_bencode(bencoded_value):
     if chr(bencoded_value[0]).isdigit():
@@ -51,85 +58,136 @@ def bencode(data):
         return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
-    
-def handshake(peer_ip, peer_port, info_hash, peer_id):
-    pstrlen = b'\x13'
-    pstr = b'BitTorrent protocol'
-    reserved = b'\x00' * 8
-    payload = pstrlen + pstr + reserved + info_hash + peer_id.encode()
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((peer_ip, peer_port))
-    sock.send(payload)
-    return sock
 
-def send_interested(sock):
-    length = struct.pack('>I', 1)
-    message_id = struct.pack('>B', 2)
-    sock.send(length + message_id)
+def get_content(file_name):
+    with open(file_name, mode="rb") as f:
+        content = f.read()
+        decoded_content = decode_bencode(content)
+        return decoded_content
 
-def recv_message(sock):
-    length_prefix = struct.unpack('>I', sock.recv(4))[0]
-    message_id = struct.unpack('>B', sock.recv(1))[0]
-    payload = sock.recv(length_prefix - 1)
-    return message_id, payload
+def get_pieces_hex(decoded_content):
+    pieces = decoded_content["info"]["pieces"]
+    piece_hashes = [
+        pieces[i : i + LEN_OF_PIECE_HASH]
+        for i in range(0, len(pieces), LEN_OF_PIECE_HASH)
+    ]
+    piece_hashes_in_hex = [binascii.hexlify(piece).decode() for piece in piece_hashes]
+    return piece_hashes_in_hex
 
-def send_request(sock, index, begin, length):
-    length_prefix = struct.pack('>I', 13)
-    message_id = struct.pack('>B', 6)
-    payload = struct.pack('>III', index, begin, length)
-    sock.send(length_prefix + message_id + payload)
+def get_hash_bytes(decoded_content):
+    info_data = decoded_content["info"]
+    info_encoded = bencode(info_data)
+    hash_object = hashlib.sha1(info_encoded)
+    hash_bytes = hash_object.digest()
+    return hash_bytes
 
-def recv_piece(sock):
-    _, payload = recv_message(sock)
-    index, begin = struct.unpack('>II', payload[:8])
-    block = payload[8:]
-    return index, begin, block
-
-def download_piece(torrent_info, piece_index, output_path):
-    tracker_url = torrent_info.get('announce', '').decode()
-    info_dict = torrent_info.get('info', {})
-    bencoded_info = bencode(info_dict)
-    info_hash = hashlib.sha1(bencoded_info).digest()
+def get_peers(decoded_content):
+    hash_bytes = get_hash_bytes(decoded_content)
     params = {
-        'info_hash': info_hash,
-        'peer_id': '00112233445566778899',
-        'port': 6881,
-        'uploaded': 0,
-        'downloaded': 0,
-        'left': torrent_info.get('info', {}).get('length', 0),
-        'compact': 1
+        "info_hash": hash_bytes,
+        "peer_id": PEER_ID,
+        "port": 6881,
+        "uploaded": 0,
+        "downloaded": 0,
+        "left": decoded_content["info"]["length"],
+        "compact": 1,
+
     }
-    response = requests.get(tracker_url, params=params)
-    response_dict, _ = decode_bencode(response.content)
-    peers = response_dict.get('peers', b'')
+
+    resp = requests.get(decoded_content["announce"].decode(), params=urlencode(params))
+    resp_decoded = decode_bencode(resp.content)
+    peers = resp_decoded["peers"]
+    peers_decoded = []
     for i in range(0, len(peers), 6):
-        ip = '.'.join(str(b) for b in peers[i:i+4])
-        port = struct.unpack('!H', peers[i+4:i+6])[0]
-        sock = handshake(ip, port, info_hash, params['peer_id'])
-        send_interested(sock)
-        while True:
-            message_id, _ = recv_message(sock)
-            if message_id == 1:
-                break
-        file_length = torrent_info.get('info', {}).get('length', 0)
-        piece_length = torrent_info.get('info', {}).get('piece length', 0)
-        num_pieces = file_length // piece_length
-        if piece_index == num_pieces - 1:
-            piece_length = file_length % piece_length
-        blocks_per_piece = piece_length // (16 * 1024)
-        last_block_length = piece_length % (16 * 1024)
-        piece = b''
-        for block_index in range(blocks_per_piece):
-            send_request(sock, piece_index, block_index * (16 * 1024), 16 * 1024)
-            _, _, block = recv_piece(sock)
-            piece += block
-        if last_block_length > 0:
-            send_request(sock, piece_index, blocks_per_piece * (16 * 1024), last_block_length)
-            _, _, block = recv_piece(sock)
-            piece += block
-        with open(output_path, 'wb') as f:
-            f.write(piece)
-        print(f"Piece {piece_index} downloaded to {output_path}.")
+        peer = peers[i : i + 6]
+        ip = ".".join(str(peer[idx]) for idx in range(4))
+        port = int(peer[4]) * 16 * 16 + int(peer[5])
+        peers_decoded.append(f"{ip}:{port}")
+    return peers_decoded
+
+def handshake_socket(hash_bytes, ip, port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((ip, int(port)))
+    try:
+        handshake_msg = (
+            (19).to_bytes(1, "big")
+            + b"BitTorrent protocol"
+            + (0).to_bytes(8, "big")
+            + hash_bytes
+            + b"00112233445566778899"
+        )
+        sock.send(handshake_msg)
+        data = sock.recv(len(handshake_msg))
+        peer_id_hex = data[48:68].hex()
+        return sock, peer_id_hex
+    except Exception as e:
+        print(e)
+
+def download_piece(output_location, file_name, piece_idx):
+    decoded_content = get_content(file_name)
+    peers = get_peers(decoded_content)
+    peer = peers[0]
+    hash_bytes = get_hash_bytes(decoded_content)
+    piece_hashes_in_hex = get_pieces_hex(decoded_content)
+    ip, port = peer.split(":")
+
+    def receive(sock):
+        length = b""
+        while not length or not int.from_bytes(length, "big"):
+            length = sock.recv(4)
+        length = int.from_bytes(length, "big")
+        data = sock.recv(length)
+        while len(data) < length:
+            data += sock.recv(length - len(data))
+        msg_id = int(data[0])
+        payload = data[1:]
+        return msg_id, payload
+
+    def create_request(msg_id, payload):
+        msg_length = (len(payload) + 1).to_bytes(4, "big")
+        msg_id = msg_id.to_bytes(1, "big")
+        data = msg_length + msg_id + payload
+        return data
+
+    def parse_incoming_piece(data):
+        block_idx = int.from_bytes(data[:4], "big")
+        begin_offset = int.from_bytes(data[4:8], "big")
+        block_data = data[8:]
+        return block_idx, begin_offset, block_data
+
+    sock, peer_id_hex = handshake_socket(hash_bytes, ip, int(port))
+    msg_id, data = receive(sock)
+    sock.send(create_request(2, b""))
+    msg_id, data = receive(sock)
+    while msg_id != 1:
+        msg_id, data = receive(sock)
+    num_pieces = len(decoded_content["info"]["pieces"]) // LEN_OF_PIECE_HASH
+    piece_length = decoded_content["info"]["piece length"]
+    file_length = decoded_content["info"]["length"]
+    if piece_idx == num_pieces - 1:
+        piece_length = (file_length % piece_length) or piece_length
+    num_blocks = math.ceil(piece_length / BLOCK_SIZE_IN_BYTES)
+    piece_data = bytearray()
+    for block_idx in range(num_blocks):
+        block_offset = block_idx * BLOCK_SIZE_IN_BYTES
+        block_length = min(BLOCK_SIZE_IN_BYTES, piece_length - block_offset)
+        payload = (
+            piece_idx.to_bytes(4, "big")
+            + block_offset.to_bytes(4, "big")
+            + block_length.to_bytes(4, "big")
+        )
+        request = create_request(6, payload)
+        sock.send(request)
+        msg_id, data = receive(sock)
+        recv_idx, recv_offset, recv_data = parse_incoming_piece(data)
+        piece_data.extend(recv_data)
+    expected_piece_hash = piece_hashes_in_hex[piece_idx]
+    piece_hash = hashlib.sha1(piece_data).hexdigest()
+    if piece_hash != expected_piece_hash:
+        raise ValueError("Piece hash does not match expected hash")
+    with open(output_location, "wb") as f:
+        f.write(piece_data)
+    print(f"Piece {piece_idx} downloaded to {output_location}.")
 
 def main():
     command = sys.argv[1]
@@ -202,12 +260,11 @@ def main():
             peer_id_received = data[-20:]
             print(f"Peer ID: {peer_id_received.hex()}")
     elif command == "download_piece":
-        with open(sys.argv[4], 'rb') as f:
-            bencoded_value = f.read()
-        torrent_info, _ = decode_bencode(bencoded_value)
-        piece_index = int(sys.argv[5])
-        output_path = sys.argv[3]
-        download_piece(torrent_info, piece_index, output_path)
+        flag = sys.argv[2]
+        file_location = sys.argv[3]
+        file_name = sys.argv[4]
+        piece_idx = int(sys.argv[5])
+        download_piece(file_location, file_name, piece_idx)
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
