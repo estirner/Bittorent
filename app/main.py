@@ -8,23 +8,36 @@ import socket
 import math
 
 def decode_bencode(bencoded_value):
-    bencoded_value = str(bencoded_value)
-    if bencoded_value[0].isdigit():
-        return decode_bencode_string(bencoded_value)
-    elif bencoded_value[0] == 'i':
-        end_index = bencoded_value.find('e')
+    if chr(bencoded_value[0]).isdigit():
+        first_colon_index = bencoded_value.find(b":")
+        if first_colon_index == -1:
+            raise ValueError("Invalid encoded value")
+        length = int(bencoded_value[:first_colon_index])
+        return bencoded_value[first_colon_index+1:first_colon_index+1+length], bencoded_value[first_colon_index+1+length:]
+    elif chr(bencoded_value[0]) == 'i':
+        end_index = bencoded_value.find(b'e')
         if end_index == -1:
             raise ValueError("Invalid encoded value")
         return int(bencoded_value[1:end_index]), bencoded_value[end_index+1:]
-    elif bencoded_value[0] == 'l':
+    elif chr(bencoded_value[0]) == 'l':
         list_values = []
         remaining = bencoded_value[1:]
-        while remaining[0] != 'e':
+        while remaining[0] != ord('e'):
             decoded, remaining = decode_bencode(remaining)
             list_values.append(decoded)
         return list_values, remaining[1:]
-    elif bencoded_value[0] == 'd':
-        return decode_bencode_dict(bencoded_value)
+    elif chr(bencoded_value[0]) == 'd':
+        dict_values = {}
+        remaining = bencoded_value[1:]
+        while remaining[0] != ord('e'):
+            key, remaining = decode_bencode(remaining)
+            if isinstance(key, bytes):
+                key = key.decode()
+            value, remaining = decode_bencode(remaining)
+            dict_values[key] = value
+        return dict_values, remaining[1:]
+    else:
+        raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
 
 def bencode(data):
     if isinstance(data, str):
