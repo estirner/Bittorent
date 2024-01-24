@@ -13,7 +13,7 @@ def decode_bencode(bencoded_value):
         if first_colon_index == -1:
             raise ValueError("Invalid encoded value")
         length = int(bencoded_value[:first_colon_index])
-        return bencoded_value[first_colon_index+1:first_colon_index+1+length], bencoded_value[first_colon_index+1+length:]
+        return bencoded_value[first_colon_index+1:first_colon_index+1+length], bencoded_value[first_colon_index+1+length:], decode_bencode_string(bencoded_value)
     elif chr(bencoded_value[0]) == 'i':
         end_index = bencoded_value.find(b'e')
         if end_index == -1:
@@ -27,23 +27,17 @@ def decode_bencode(bencoded_value):
             list_values.append(decoded)
         return list_values, remaining[1:]
     elif chr(bencoded_value[0]) == 'd':
-        index, dict_values = 1, {}
-        while bencoded_value[index] != ord('e'):
-            key, length = decode_bencode_string(bencoded_value[index:])
-            index += length
-            value, length = decode_bencode(bencoded_value[index:])
-            index += length
-            dict_values[key.decode()] = value
-        return dict_values, bencoded_value[index+1:]
+        dict_values = {}
+        remaining = bencoded_value[1:]
+        while remaining[0] != ord('e'):
+            key, remaining = decode_bencode(remaining)
+            if isinstance(key, bytes):
+                key = key.decode()
+            value, remaining = decode_bencode(remaining)
+            dict_values[key] = value
+        return dict_values, remaining[1:], decode_bencode_dict(bencoded_value)
     else:
         raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
-
-def decode_bencode_string(bencoded_value):
-    first_colon_index = bencoded_value.find(b":")
-    if first_colon_index == -1:
-        raise ValueError("Invalid encoded value")
-    length = first_colon_index + int(bencoded_value[:first_colon_index]) + 1
-    return bencoded_value[first_colon_index + 1 : length], length
 
 def bencode(data):
     if isinstance(data, str):
@@ -59,10 +53,28 @@ def bencode(data):
         return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
+    
+def decode_bencode_string(bencoded_value):
+    first_colon_index = bencoded_value.find(b":")
+    if first_colon_index == -1:
+
+        raise ValueError("Invalid encoded value")
+    length = first_colon_index + int(bencoded_value[:first_colon_index]) + 1
+    return bencoded_value[first_colon_index + 1 : length], length
+
+def decode_bencode_dict(bencoded_value):
+    index, result = 1, {}
+    while bencoded_value[index] != ord("e"):
+        key, length = decode_bencode_string(bencoded_value[index:])
+        index += length
+        value, length = decode_bencode(bencoded_value[index:])
+        index += length
+        result[key.decode()] = value
+    return result, index + 1
 
 def extract_info_hash(bencoded_value):
     _, bencoded_value_from_info = bencoded_value.split(b"info")
-    _, dict_length = decode_bencode(bencoded_value_from_info)
+    _, dict_length = decode_bencode_dict(bencoded_value_from_info)
     return bencoded_value_from_info[:dict_length]
 
 def extract_pieces_hashes(pieces_hashes):
