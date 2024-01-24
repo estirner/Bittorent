@@ -24,6 +24,8 @@ def decode_bencode(bencoded_value):
         remaining = bencoded_value[1:]
         while remaining[0] != ord('e'):
             decoded, remaining = decode_bencode(remaining)
+            if isinstance(decoded, int):
+                decoded = bytes([decoded])
             list_values.append(decoded)
         return list_values, remaining[1:]
     elif chr(bencoded_value[0]) == 'd':
