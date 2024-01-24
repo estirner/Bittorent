@@ -8,21 +8,22 @@ import socket
 import math
 
 def decode_bencode(bencoded_value):
-    if chr(bencoded_value[0]).isdigit():
+    bencoded_value = str(bencoded_value)
+    if bencoded_value[0].isdigit():
         return decode_bencode_string(bencoded_value)
-    elif chr(bencoded_value[0]) == 'i':
-        end_index = bencoded_value.find(b'e')
+    elif bencoded_value[0] == 'i':
+        end_index = bencoded_value.find('e')
         if end_index == -1:
             raise ValueError("Invalid encoded value")
         return int(bencoded_value[1:end_index]), bencoded_value[end_index+1:]
-    elif chr(bencoded_value[0]) == 'l':
+    elif bencoded_value[0] == 'l':
         list_values = []
         remaining = bencoded_value[1:]
-        while remaining[0] != ord('e'):
+        while remaining[0] != 'e':
             decoded, remaining = decode_bencode(remaining)
             list_values.append(decoded)
         return list_values, remaining[1:]
-    elif chr(bencoded_value[0]) == 'd':
+    elif bencoded_value[0] == 'd':
         return decode_bencode_dict(bencoded_value)
 
 def bencode(data):
