@@ -61,18 +61,10 @@ def decode_bencode_string(bencoded_value):
     length = first_colon_index + int(bencoded_value[:first_colon_index]) + 1
     return bencoded_value[first_colon_index + 1 : length], length
 
-def decode_bencode_list(bencoded_value):
-    index, result = 1, []
-    while bencoded_value[index] != ord("e"):
-        decoded_value, length = decode_bencode(bencoded_value[index:])
-        index += length
-        result.append(decoded_value)
-    return result, index + 1
-
 def decode_bencode_dict(bencoded_value):
     index, result = 1, {}
     while bencoded_value[index] != ord("e"):
-        key, length = decode_bencode(bencoded_value[index:])
+        key, length = decode_bencode_string(bencoded_value[index:])
         index += length
         value, length = decode_bencode(bencoded_value[index:])
         index += length
