@@ -27,17 +27,14 @@ def decode_bencode(bencoded_value):
             list_values.append(decoded)
         return list_values, remaining[1:]
     elif chr(bencoded_value[0]) == 'd':
-        dict_values = {}
-        remaining = bencoded_value[1:]
-        while remaining[0] != ord('e'):
-            key, remaining = decode_bencode(remaining)
-            if isinstance(key, bytes):
-                key = key.decode()
-            value, remaining = decode_bencode(remaining)
-            dict_values[key] = value
-        return dict_values, remaining[1:], decode_bencode_dict(bencoded_value)
-    else:
-        raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
+        index, result = 1, {}
+        while bencoded_value[index] != ord("e"):
+            key, length = decode_bencode(bencoded_value[index:])
+            index += length
+            value, length = decode_bencode(bencoded_value[index:])
+            index += length
+            result[key.decode()] = value
+        return result, index + 1
 
 def bencode(data):
     if isinstance(data, str):
@@ -48,9 +45,6 @@ def bencode(data):
         return f"i{data}e".encode()
     elif isinstance(data, list):
         return b"l" + b"".join(bencode(item) for item in data) + b"e"
-    elif isinstance(data, dict):
-        encoded_dict = b"".join(bencode(key) + bencode(value) for key, value in sorted(data.items()))
-        return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
 
