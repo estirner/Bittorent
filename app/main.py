@@ -45,19 +45,24 @@ def decode_bencode(bencoded_value):
         raise NotImplementedError("Only strings, integers, lists, and dictionaries are supported at the moment")
 
 def bencode(data):
-    if isinstance(data, str):
+    if isinstance(data, dict):
+        res = b"d"
+        for key, val in data.items():
+            res += bencode(key) + bencode(val)
+        return res + b"e"
+    elif isinstance(data, list):
+        res = b"l"
+        for val in data:
+            res += bencode(val)
+        return res + b"e"
+    elif isinstance(data, str):
         return f"{len(data)}:{data}".encode()
     elif isinstance(data, bytes):
-        return f"{len(data)}:".encode() + data
+        return str(len(data)).encode() + b":" + data
     elif isinstance(data, int):
         return f"i{data}e".encode()
-    elif isinstance(data, list):
-        return b"l" + b"".join(bencode(item) for item in data) + b"e"
-    elif isinstance(data, dict):
-        encoded_dict = b"".join(bencode(key) + bencode(value) for key, value in sorted(data.items()))
-        return b"d" + encoded_dict + b"e"
     else:
-        raise TypeError(f"Type not serializable: {type(data)}")
+        raise TypeError(f"Type not bencodable: {type(data)} {data}")
 
 def get_content(file_name):
     with open(file_name, mode="rb") as f:
