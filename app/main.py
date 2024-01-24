@@ -13,7 +13,7 @@ def decode_bencode(bencoded_value):
         if first_colon_index == -1:
             raise ValueError("Invalid encoded value")
         length = int(bencoded_value[:first_colon_index])
-        return bencoded_value[first_colon_index+1:first_colon_index+1+length], bencoded_value[first_colon_index+1+length:], decode_bencode_string(bencoded_value)
+        return bencoded_value[first_colon_index+1:first_colon_index+1+length], bencoded_value[first_colon_index+1+length:]
     elif chr(bencoded_value[0]) == 'i':
         end_index = bencoded_value.find(b'e')
         if end_index == -1:
@@ -53,19 +53,11 @@ def bencode(data):
         return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
-    
-def decode_bencode_string(bencoded_value):
-    first_colon_index = bencoded_value.find(b":")
-    if first_colon_index == -1:
-
-        raise ValueError("Invalid encoded value")
-    length = first_colon_index + int(bencoded_value[:first_colon_index]) + 1
-    return bencoded_value[first_colon_index + 1 : length], length
 
 def decode_bencode_dict(bencoded_value):
     index, result = 1, {}
     while bencoded_value[index] != ord("e"):
-        key, length = decode_bencode_string(bencoded_value[index:])
+        key, length = decode_bencode(bencoded_value[index:])
         index += length
         value, length = decode_bencode(bencoded_value[index:])
         index += length
