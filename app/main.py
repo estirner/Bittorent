@@ -9,11 +9,7 @@ import math
 
 def decode_bencode(bencoded_value):
     if chr(bencoded_value[0]).isdigit():
-        first_colon_index = bencoded_value.find(b":")
-        if first_colon_index == -1:
-            raise ValueError("Invalid encoded value")
-        length = int(bencoded_value[:first_colon_index])
-        return bencoded_value[first_colon_index+1:first_colon_index+1+length], bencoded_value[first_colon_index+1+length:]
+        return decode_bencode_string(bencoded_value)
     elif chr(bencoded_value[0]) == 'i':
         end_index = bencoded_value.find(b'e')
         if end_index == -1:
@@ -27,14 +23,7 @@ def decode_bencode(bencoded_value):
             list_values.append(decoded)
         return list_values, remaining[1:]
     elif chr(bencoded_value[0]) == 'd':
-        index, result = 1, {}
-        while bencoded_value[index] != ord("e"):
-            key, length = decode_bencode(bencoded_value[index:])
-            index += length
-            value, length = decode_bencode(bencoded_value[index:])
-            index += length
-            result[key.decode()] = value
-        return result, index + 1
+        return decode_bencode_dict(bencoded_value)
 
 def bencode(data):
     if isinstance(data, str):
@@ -45,8 +34,18 @@ def bencode(data):
         return f"i{data}e".encode()
     elif isinstance(data, list):
         return b"l" + b"".join(bencode(item) for item in data) + b"e"
+    elif isinstance(data, dict):
+        encoded_dict = b"".join(bencode(key) + bencode(value) for key, value in sorted(data.items()))
+        return b"d" + encoded_dict + b"e"
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
+    
+def decode_bencode_string(bencoded_value):
+    first_colon_index = bencoded_value.find(b":")
+    if first_colon_index == -1:
+        raise ValueError("Invalid encoded value")
+    length = first_colon_index + int(bencoded_value[:first_colon_index]) + 1
+    return bencoded_value[first_colon_index + 1 : length], length
 
 def decode_bencode_dict(bencoded_value):
     index, result = 1, {}
