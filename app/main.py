@@ -16,7 +16,12 @@ def decode_bencode(bencoded_value):
             raise ValueError("Invalid encoded value")
         return int(bencoded_value[1:end_index]), bencoded_value[end_index+1:]
     elif chr(bencoded_value[0]) == 'l':
-        return decode_bencode_list(bencoded_value)
+        list_values = []
+        remaining = bencoded_value[1:]
+        while remaining[0] != ord('e'):
+            decoded, remaining = decode_bencode(remaining)
+            list_values.append(decoded)
+        return list_values, remaining[1:]
     elif chr(bencoded_value[0]) == 'd':
         return decode_bencode_dict(bencoded_value)
 
