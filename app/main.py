@@ -117,7 +117,7 @@ def download_piece(torrent_file, piece_index, output_file):
         length, msg_type = s.recv(4), s.recv(1)
         while msg_type != b"\x01":
             length, msg_type = s.recv(4), s.recv(1)
-        piece_length = torrent_content["info"]["piece length"]
+        piece_length = decoded_torrent["info"]["piece length"]
         chuck_size = 16 * 1024
         if piece_index == (len(torrent_content["info"]["pieces"]) // 20) - 1:
             piece_length = (
