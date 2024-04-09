@@ -69,13 +69,13 @@ def get_peers(torrent):
             "compact": "1",
         },
     )
-    response = decode_bencode(res.content)
-    peers_raw = response["peers"]
+    decoded_response, _ = decode_bencode(res.content)
+    peers_raw = decoded_response["peers"]
     peers = []
     for i in range(0, len(peers_raw), 6):
         ip = ".".join(str(j) for j in peers_raw[i : i + 4])
         port = int.from_bytes(peers_raw[i + 4 : i + 6], byteorder="big")
-        peers.append(ip + ":" + str(port))
+        peers.append(f"{ip}:{port}")
     return peers
 
 def generate_handshake(torrent):
