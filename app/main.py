@@ -96,15 +96,17 @@ def do_handshake(torrent, peer_ip, peer_port):
 
 def download_piece(torrent_file, piece_index, output_file):
     with open(torrent_file, "rb") as f:
-        torrent = f.read()
-        torrent = decode_bencode(torrent)
-    peers = get_peers(torrent)
+        torrent_content = f.read()
+    
+    decoded_torrent, _ = decode_bencode(torrent_content)
+    peers = get_peers(decoded_torrent)
     peer = peers[0]
     peer_ip, peer_port = peer.split(":")
+    
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print("Connecting to peer", peer_ip, peer_port)
         s.connect((peer_ip, int(peer_port)))
-        handshake = generate_handshake(torrent)
+        handshake = generate_handshake(decoded_torrent)
         s.sendall(handshake)
         response_handshake = s.recv(len(handshake))
         length, msg_type = s.recv(4), s.recv(1)
