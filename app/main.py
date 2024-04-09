@@ -99,7 +99,7 @@ def download_piece(torrent_file, piece_index, output_file):
         torrent = f.read()
         torrent = decode_bencode(torrent)
     peers = get_peers(torrent)
-    peer = peers[1]
+    peer = peers[0]
     peer_ip, peer_port = peer.split(":")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print("Connecting to peer", peer_ip, peer_port)
@@ -113,7 +113,7 @@ def download_piece(torrent_file, piece_index, output_file):
         s.recv(int.from_bytes(length, byteorder="big") - 1)
         s.sendall(b"\x00\x00\x00\x01\x02")
         length, msg_type = s.recv(4), s.recv(1)
-        while msg_type != b"\x01":  # wait for unchoke
+        while msg_type != b"\x01":
             length, msg_type = s.recv(4), s.recv(1)
         piece_length = torrent["info"]["piece length"]
         chuck_size = 16 * 1024
@@ -224,6 +224,7 @@ def main():
         torrent_file = sys.argv[4]
         piece_index = int(sys.argv[5])
         download_piece(torrent_file, piece_index, output_file)
+        print(f"Piece {piece_index} downloaded to {output_file}.")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
