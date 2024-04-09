@@ -158,19 +158,23 @@ def download_torrent(torrent_file, output_file):
     
     decoded_torrent, _ = decode_bencode(torrent_content)
     peers = get_peers(decoded_torrent)
-    peer = peers[1]
+    peer = peers[0]
     peer_ip, peer_port = peer.split(":")
-
+    
+    info_dict = decoded_torrent['info']
+    bencoded_info = bencode(info_dict)
+    info_hash = hashlib.sha1(bencoded_info).digest()
+    
     file_length = decoded_torrent["info"]["length"]
     piece_length = decoded_torrent["info"]["piece length"]
     pieces = decoded_torrent["info"]["pieces"]
     num_pieces = len(pieces) // 20
-
+    
     downloaded_file = b""
     for piece_index in range(num_pieces):
-        piece = download_piece1(peer_ip, peer_port, decoded_torrent, piece_index, piece_length, pieces)
+        piece = download_piece1(peer_ip, peer_port, info_hash, piece_index, piece_length, pieces)
         downloaded_file += piece
-
+    
     with open(output_file, "wb") as f:
         f.write(downloaded_file)
 
@@ -211,11 +215,11 @@ def receive_block(s):
             block_data += s.recv(block_length - len(block_data))
     return block_data
 
-def download_piece1(peer_ip, peer_port, decoded_torrent, piece_index, piece_length, pieces):
+def download_piece1(peer_ip, peer_port, info_hash, piece_index, piece_length, pieces):
     peer_id = '-PY0001-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((peer_ip, int(peer_port)))
-        perform_handshake(s, decoded_torrent["info_hash"], peer_id)
+        perform_handshake(s, info_hash, peer_id)
         send_interested(s)
         piece_data = request_piece(s, piece_index, piece_length)
         
