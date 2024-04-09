@@ -126,17 +126,16 @@ def download_piece(torrent_file, piece_index, output_file):
         piece = b""
         for i in range(math.ceil(piece_length / chuck_size)):
             msg_id = b"\x06"
-            chunk_index = piece_index.to_bytes(4)
-            chunk_begin = (i * chuck_size).to_bytes(4)
-            if (
-                i == math.ceil((piece_length / chuck_size)) - 1
-                and piece_length % chuck_size != 0
-            ):
-                chunk_length = piece_length % chuck_size
+            chunk_index = piece_index.to_bytes(4, byteorder='big')
+            chunk_begin = (i * chuck_size).to_bytes(4, byteorder='big')
+            if i == math.ceil(piece_length / chuck_size) - 1 and piece_length % chuck_size != 0:
+                chunk_length = (piece_length % chuck_size).to_bytes(4, byteorder='big')
             else:
-                chunk_length = chuck_size
-            chunk_length = chunk_length.to_bytes(4)
-            print("Requesting", chunk_index, chunk_begin, chunk_length)
+                chunk_length = chuck_size.to_bytes(4, byteorder='big')
+            message_length = (1 + len(chunk_index) + len(chunk_begin) + len(chunk_length)).to_bytes(4, byteorder='big')
+            request_message = message_length + msg_id + chunk_index + chunk_begin + chunk_length
+            s.sendall(request_message)
+            print(f"Requesting piece: {int.from_bytes(chunk_index, 'big')}, begin: {int.from_bytes(chunk_begin, 'big')}, length: {int.from_bytes(chunk_length, 'big')}")
             msg = msg_id + chunk_index + chunk_begin + chunk_length
             msg = len(msg).to_bytes(4) + msg
             length, msg_type = int.from_bytes(s.recv(4)), s.recv(1)
