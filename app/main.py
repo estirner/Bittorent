@@ -54,9 +54,9 @@ def bencode(data):
     else:
         raise TypeError(f"Type not serializable: {type(data)}")
 
-def get_peers(torrent):
-    url = torrent["announce"].decode("utf-8")
-    info_encoded = bencode(torrent["info"])
+def get_peers(torrent_content):
+    url = torrent_content["announce"].decode("utf-8")
+    info_encoded = bencode(torrent_content["info"])
     res = requests.get(
         url,
         params={
@@ -65,7 +65,7 @@ def get_peers(torrent):
             "port": 6881,
             "uploaded": 0,
             "downloaded": 0,
-            "left": torrent["info"]["length"],
+            "left": torrent_content["info"]["length"],
             "compact": "1",
         },
     )
@@ -78,16 +78,16 @@ def get_peers(torrent):
         peers.append(f"{ip}:{port}")
     return peers
 
-def generate_handshake(torrent):
-    info_encoded = bencode(torrent["info"])
+def generate_handshake(torrent_content):
+    info_encoded = bencode(torrent_content["info"])
     info_hash = hashlib.sha1(info_encoded).digest()
     handshake = b"\x13BitTorrent protocol\x00\x00\x00\x00\x00\x00\x00\x00"
     handshake += info_hash
     handshake += b"00112233445566778899"
     return handshake
 
-def do_handshake(torrent, peer_ip, peer_port):
-    handshake = generate_handshake(torrent)
+def do_handshake(torrent_content, peer_ip, peer_port):
+    handshake = generate_handshake(torrent_content)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((peer_ip, int(peer_port)))
         s.send(handshake)
@@ -117,11 +117,11 @@ def download_piece(torrent_file, piece_index, output_file):
         length, msg_type = s.recv(4), s.recv(1)
         while msg_type != b"\x01":
             length, msg_type = s.recv(4), s.recv(1)
-        piece_length = torrent["info"]["piece length"]
+        piece_length = torrent_content["info"]["piece length"]
         chuck_size = 16 * 1024
-        if piece_index == (len(torrent["info"]["pieces"]) // 20) - 1:
+        if piece_index == (len(torrent_content["info"]["pieces"]) // 20) - 1:
             piece_length = (
-                torrent["info"]["length"] % piece_length
+                torrent_content["info"]["length"] % piece_length
             )
         piece = b""
         for i in range(math.ceil(piece_length / chuck_size)):
@@ -147,7 +147,7 @@ def download_piece(torrent_file, piece_index, output_file):
             while len(block) < to_get:
                 block += s.recv(to_get - len(block))
             piece += block
-        og_hash = torrent["info"]["pieces"][piece_index * 20 : piece_index * 20 + 20]
+        og_hash = torrent_content["info"]["pieces"][piece_index * 20 : piece_index * 20 + 20]
         assert hashlib.sha1(piece).digest() == og_hash
         with open(output_file, "wb") as f:
             f.write(piece)
