@@ -119,9 +119,9 @@ def download_piece(torrent_file, piece_index, output_file):
             length, msg_type = s.recv(4), s.recv(1)
         piece_length = decoded_torrent["info"]["piece length"]
         chuck_size = 16 * 1024
-        if piece_index == (len(torrent_content["info"]["pieces"]) // 20) - 1:
+        if piece_index == (len(decoded_torrent["info"]["pieces"]) // 20) - 1:
             piece_length = (
-                torrent_content["info"]["length"] % piece_length
+                decoded_torrent["info"]["length"] % piece_length
             )
         piece = b""
         for i in range(math.ceil(piece_length / chuck_size)):
@@ -147,7 +147,7 @@ def download_piece(torrent_file, piece_index, output_file):
             while len(block) < to_get:
                 block += s.recv(to_get - len(block))
             piece += block
-        og_hash = torrent_content["info"]["pieces"][piece_index * 20 : piece_index * 20 + 20]
+        og_hash = decoded_torrent["info"]["pieces"][piece_index * 20 : piece_index * 20 + 20]
         assert hashlib.sha1(piece).digest() == og_hash
         with open(output_file, "wb") as f:
             f.write(piece)
