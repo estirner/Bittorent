@@ -1,4 +1,5 @@
 import json
+import random
 import sys
 import hashlib
 from urllib.parse import urlencode
@@ -151,6 +152,74 @@ def download_piece(torrent_file, piece_index, output_file):
         with open(output_file, "wb") as f:
             f.write(piece)
 
+def download_torrent(torrent_file, output_file):
+    with open(torrent_file, "rb") as f:
+        torrent_content = f.read()
+    
+    decoded_torrent, _ = decode_bencode(torrent_content)
+    peers = get_peers(decoded_torrent)
+    peer = peers[1]
+    peer_ip, peer_port = peer.split(":")
+
+    file_length = decoded_torrent["info"]["length"]
+    piece_length = decoded_torrent["info"]["piece length"]
+    pieces = decoded_torrent["info"]["pieces"]
+    num_pieces = len(pieces) // 20
+
+    downloaded_file = b""
+    for piece_index in range(num_pieces):
+        piece = download_piece1(peer_ip, peer_port, decoded_torrent, piece_index, piece_length, pieces)
+        downloaded_file += piece
+
+    with open(output_file, "wb") as f:
+        f.write(downloaded_file)
+
+def perform_handshake(s, info_hash, peer_id):
+    pstr = b"BitTorrent protocol"
+    pstrlen = len(pstr).to_bytes(1, byteorder='big')
+    reserved = b'\x00' * 8
+    handshake_msg = pstrlen + pstr + reserved + info_hash + peer_id.encode()
+    s.send(handshake_msg)
+    response = s.recv(68)
+
+def send_interested(s):
+    length = b'\x00\x00\x00\x01'
+    msg_id = b'\x02'
+    s.send(length + msg_id)
+
+def request_piece(s, piece_index, piece_length, block_size=16384):
+    piece_data = b''
+    num_blocks = math.ceil(piece_length / block_size)
+    for i in range(num_blocks):
+        block_offset = i * block_size
+        block_length = min(piece_length - block_offset, block_size)
+        request_msg = struct.pack('>IbIII', 13, 6, piece_index, block_offset, block_length)
+        s.send(request_msg)
+        piece_data += receive_block(s)
+    return piece_data
+
+def receive_block(s):
+    block_data = b''
+    length_prefix = s.recv(4)
+    length = struct.unpack('>I', length_prefix)[0]
+    message_id = s.recv(1)
+    if message_id == b'\x07':
+        index = s.recv(4)
+        begin = s.recv(4)
+        block_length = length - 9
+        while len(block_data) < block_length:
+            block_data += s.recv(block_length - len(block_data))
+    return block_data
+
+def download_piece1(peer_ip, peer_port, info_hash, piece_index, piece_length):
+    peer_id = '-PY0001-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((peer_ip, int(peer_port)))
+        perform_handshake(s, info_hash, peer_id)
+        send_interested(s)
+        piece_data = request_piece(s, piece_index, piece_length)
+        return piece_data
+    
 def main():
     command = sys.argv[1]
     if command == "decode":
@@ -226,6 +295,11 @@ def main():
         piece_index = int(sys.argv[5])
         download_piece(torrent_file, piece_index, output_file)
         print(f"Piece {piece_index} downloaded to {output_file}.")
+    elif command == "download":
+        output_file = sys.argv[3]
+        torrent_file = sys.argv[4]
+        download_torrent(torrent_file, output_file)
+        print(f"Downloaded {torrent_file} to {output_file}.")
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
