@@ -100,7 +100,7 @@ def download_piece(torrent_file, piece_index, output_file):
     
     decoded_torrent, _ = decode_bencode(torrent_content)
     peers = get_peers(decoded_torrent)
-    peer = peers[0]
+    peer = peers[1]
     peer_ip, peer_port = peer.split(":")
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
