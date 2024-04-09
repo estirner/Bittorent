@@ -211,13 +211,18 @@ def receive_block(s):
             block_data += s.recv(block_length - len(block_data))
     return block_data
 
-def download_piece1(peer_ip, peer_port, info_hash, piece_index, piece_length):
+def download_piece1(peer_ip, peer_port, decoded_torrent, piece_index, piece_length, pieces):
     peer_id = '-PY0001-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((peer_ip, int(peer_port)))
-        perform_handshake(s, info_hash, peer_id)
+        perform_handshake(s, decoded_torrent["info_hash"], peer_id)
         send_interested(s)
         piece_data = request_piece(s, piece_index, piece_length)
+        
+        expected_hash = pieces[piece_index*20:(piece_index+1)*20]
+        if hashlib.sha1(piece_data).digest() != expected_hash:
+            raise ValueError("Downloaded piece hash does not match expected hash.")
+        
         return piece_data
     
 def main():
